@@ -1,0 +1,1054 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Historial de Registros</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: Arial, sans-serif;
+        padding-top: 56px;
+      }
+      
+      .navbar {
+        background-color: #0d6efd;
+      }
+      
+      .navbar-brand, .nav-link {
+        color: white !important;
+      }
+      
+      .content-container {
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      
+      .title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      
+      .title-icon {
+        color: #0d6efd;
+        margin-right: 10px;
+        font-size: 24px;
+      }
+      
+      .btn-export {
+        margin-left: 10px;
+      }
+      
+      table.dataTable thead th {
+        position: relative;
+        background-image: none !important;
+      }
+
+      table.dataTable thead th.sorting:after,
+      table.dataTable thead th.sorting_asc:after,
+      table.dataTable thead th.sorting_desc:after {
+        position: absolute;
+        top: 12px;
+        right: 8px;
+        display: block;
+        font-family: "Font Awesome 5 Free";
+      }
+
+      table.dataTable thead th.sorting:after {
+        content: "\\f0dc";
+        color: #ddd;
+        font-size: 0.8em;
+        opacity: 0.8;
+      }
+      table.dataTable thead th.sorting_asc:after {
+        content: "\\f0de";
+      }
+      table.dataTable thead th.sorting_desc:after {
+        content: "\\f0dd";
+      }
+      
+      .btn-action {
+        margin-right: 5px;
+      }
+      
+      .user-info {
+        color: white;
+        margin-right: 15px;
+      }
+      
+      .loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255,255,255,0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+      
+      .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+      }
+      
+      .show-entries {
+        display: flex;
+        align-items: center;
+      }
+      
+      .show-entries select {
+        margin: 0 5px;
+      }
+      
+      .records-info {
+        color: #6c757d;
+      }
+      
+      .btn-verde {
+        background-color: #28a745;
+        color: white;
+      }
+      
+      .btn-azul {
+        background-color: #17a2b8;
+        color: white;
+      }
+      
+      .btn-rojo {
+        background-color: #dc3545;
+        color: white;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+          <span class="fw-bold">Sistema de Registro de Bandas Criminales</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="<?= ScriptApp.getService().getUrl(); ?>?action=formulario">
+                <i class="fas fa-file-alt me-1"></i> Formulario
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="<?= ScriptApp.getService().getUrl(); ?>?action=historial">
+                <i class="fas fa-history me-1"></i> Historial
+              </a>
+            </li>
+          </ul>
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <span class="user-info">
+                <i class="fas fa-user me-1"></i> <span id="username"></span> (Usuario)
+              </span>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="btnLogout">
+                <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Contenido principal -->
+    <div class="container mt-4">
+      <div class="content-container">
+        <div class="title-row">
+          <h4>
+            <i class="fas fa-history title-icon"></i>
+            Historial de Registros
+          </h4>
+          <div>
+            <button class="btn btn-success btn-export" id="btnExportExcel">
+              <i class="fas fa-file-excel me-1"></i> Excel
+            </button>
+            <button class="btn btn-danger btn-export" id="btnExportPDF">
+              <i class="fas fa-file-pdf me-1"></i> PDF
+            </button>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="show-entries">
+              <span>Mostrar</span>
+              <select class="form-select form-select-sm" id="lengthSelect">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+              <span>registros</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text">Buscar:</span>
+              <input type="text" class="form-control" id="searchInput">
+            </div>
+          </div>
+        </div>
+        
+        <div class="table-responsive">
+          <table id="tablaCasos" class="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th>Fecha de Registro</th>
+                <th>Usuario Creador</th>
+                <th>Carpeta Fiscal</th>
+                <th>Fiscalía</th>
+                <th>Unidad de Inteligencia</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Los datos se cargarán dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="pagination-container">
+          <div class="records-info" id="recordsInfo">Mostrando registros del 0 al 0 de un total de 0 registros</div>
+          <nav aria-label="Page navigation">
+            <ul class="pagination">
+              <li class="page-item disabled">
+                <a class="page-link" href="#" id="prevButton">Anterior</a>
+              </li>
+              <li class="page-item disabled">
+                <a class="page-link" href="#" id="nextButton">Siguiente</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Indicador de carga -->
+    <div class="loading" id="loadingIndicator" style="display: none;">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+    </div>
+    
+    <!-- Scripts -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+      // Esta función se ejecuta cuando la página está completamente cargada
+      window.onload = function() {
+        console.log("Página cargada completamente");
+        
+        // Intentar mostrar datos del localStorage inmediatamente
+        mostrarDatosLocalStorage();
+        
+        // Intentar obtener datos del servidor en segundo plano
+        setTimeout(function() {
+          intentarCargarDatosServidor();
+        }, 500);
+        
+        // Agregar manejadores de eventos para los botones de exportación si existen
+        const btnExcel = document.getElementById('btnExportExcel');
+        if (btnExcel) {
+          btnExcel.addEventListener('click', exportarExcel);
+        }
+        
+        const btnPDF = document.getElementById('btnExportPDF');
+        if (btnPDF) {
+          btnPDF.addEventListener('click', exportarPDF);
+        }
+      };
+
+      // Función para mostrar datos desde localStorage directamente
+      function mostrarDatosLocalStorage() {
+        try {
+          console.log("Buscando datos en localStorage...");
+          const storedData = localStorage.getItem('fecor_registros');
+          
+          if (storedData) {
+            const datos = JSON.parse(storedData);
+            console.log("Datos encontrados en localStorage:", datos.length, "registros");
+            
+            if (datos && Array.isArray(datos) && datos.length > 0) {
+              // Obtener usuario actual si está disponible
+              const usernameElement = document.getElementById('username');
+              const currentUser = usernameElement ? usernameElement.textContent : 
+                                sessionStorage.getItem('currentUser');
+              
+              console.log("Usuario actual:", currentUser);
+              
+              // Si hay usuario, filtrar los datos para ese usuario
+              let datosAMostrar = datos;
+              if (currentUser) {
+                datosAMostrar = datos.filter(function(record) {
+                  return record['Usuario Creador'] === currentUser || 
+                        (record.ID && record.ID.indexOf(currentUser) === 0);
+                });
+                console.log("Registros filtrados para usuario:", datosAMostrar.length);
+              }
+              
+              if (datosAMostrar.length > 0) {
+                // Mostrar los datos en la tabla
+                mostrarDatosEnTabla(datosAMostrar);
+                hideLoading();
+                return true;
+              }
+            }
+          }
+          
+          console.log("No se encontraron datos en localStorage");
+          hideLoading();
+          return false;
+        } catch (e) {
+          console.error("Error al procesar datos de localStorage:", e);
+          hideLoading();
+          return false;
+        }
+      }
+
+      // Función para intentar cargar datos del servidor
+      function intentarCargarDatosServidor() {
+        try {
+          console.log("Intentando cargar datos del servidor...");
+          
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Usar getCasos que es la función correcta según tu código
+            google.script.run
+              .withSuccessHandler(function(data) {
+                console.log("Datos recibidos del servidor:", data);
+                
+                if (data && Array.isArray(data) && data.length > 0) {
+                  // Guardar en localStorage
+                  localStorage.setItem('fecor_registros', JSON.stringify(data));
+                  console.log("Datos guardados en localStorage");
+                  
+                  // Mostrar los datos en la tabla
+                  mostrarDatosEnTabla(data);
+                }
+                hideLoading();
+              })
+              .withFailureHandler(function(error) {
+                console.error("Error al obtener datos del servidor:", error);
+                hideLoading();
+              })
+              .getCasos();
+          } else {
+            console.error("google.script.run no está disponible");
+            hideLoading();
+          }
+        } catch (e) {
+          console.error("Error al cargar datos del servidor:", e);
+          hideLoading();
+        }
+      }
+
+      // Función para mostrar datos en la tabla
+      function mostrarDatosEnTabla(datos) {
+        try {
+          // Buscar el cuerpo de la tabla
+          const tableBody = document.querySelector("table tbody");
+          if (!tableBody) {
+            console.error("No se encontró el cuerpo de la tabla");
+            
+            // Intento alternativo: buscar la primera tabla en la página
+            const firstTable = document.querySelector("table");
+            if (firstTable) {
+              // Crear tbody si no existe
+              const tbody = firstTable.querySelector("tbody") || document.createElement("tbody");
+              if (!firstTable.contains(tbody)) {
+                firstTable.appendChild(tbody);
+              }
+              
+              // Usar este tbody
+              rellenarTabla(tbody, datos);
+            } else {
+              console.error("No se encontró ninguna tabla en la página");
+            }
+            
+            return;
+          }
+          
+          // Usar el tbody encontrado
+          rellenarTabla(tableBody, datos);
+          
+          // Actualizar mensaje de registros mostrados
+          const infoElement = document.querySelector(".showing-entries, .pagination-info, #showingEntries");
+          if (infoElement) {
+            infoElement.textContent = `Mostrando registros del 1 al ${datos.length} de un total de ${datos.length} registros`;
+          }
+          
+          // Ocultar mensaje de "No hay datos"
+          const noDataMsg = document.querySelector("#noDataMessage, .no-data");
+          if (noDataMsg) {
+            noDataMsg.style.display = "none";
+          }
+          
+          hideLoading();
+        } catch (e) {
+          console.error("Error al mostrar datos en tabla:", e);
+          hideLoading();
+        }
+      }
+
+      // Función para rellenar la tabla con datos
+      function rellenarTabla(tbody, datos) {
+        // Limpiar tabla
+        tbody.innerHTML = "";
+        
+        // Actualizar el encabezado para incluir Fiscalía
+        const thead = tbody.parentElement.querySelector("thead");
+        if (thead) {
+          const headerRow = thead.querySelector("tr");
+          if (headerRow) {
+            headerRow.innerHTML = `
+              <th>Fecha de Registro</th>
+              <th>Fiscalía</th>
+              <th>Fiscal a cargo</th>
+              <th>Carpeta Fiscal</th>
+              <th>Fecha de Inicio</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            `;
+          }
+        }
+        
+        // Agregar filas
+        datos.forEach(function(item) {
+          const row = document.createElement("tr");
+          
+          // Mapeamos los campos correctamente
+          const fechaRegistro = item['Fecha de Registro'] || '';
+          const fiscalia = item['Fiscalía'] || '';
+          const fiscalACargo = item['Fiscal a cargo'] || ''; // No usar Usuario Creador aquí
+          const carpetaFiscal = item['Carpeta Fiscal'] || '';
+          const fechaInicio = item['Fecha de Inicio'] || item['Fecha de Registro'] || '';
+          const estado = item['Estado'] || 'Activo';
+          
+          // Crear celdas con los datos
+          const celdaFechaRegistro = document.createElement("td");
+          celdaFechaRegistro.textContent = fechaRegistro;
+          row.appendChild(celdaFechaRegistro);
+          
+          const celdaFiscalia = document.createElement("td");
+          celdaFiscalia.textContent = fiscalia;
+          row.appendChild(celdaFiscalia);
+          
+          const celdaFiscal = document.createElement("td");
+          celdaFiscal.textContent = fiscalACargo;
+          row.appendChild(celdaFiscal);
+          
+          const celdaCarpeta = document.createElement("td");
+          celdaCarpeta.textContent = carpetaFiscal;
+          row.appendChild(celdaCarpeta);
+          
+          const celdaFechaInicio = document.createElement("td");
+          celdaFechaInicio.textContent = fechaInicio;
+          row.appendChild(celdaFechaInicio);
+          
+          const celdaEstado = document.createElement("td");
+          celdaEstado.textContent = estado;
+          row.appendChild(celdaEstado);
+          
+          // Agregar celda de acciones
+          const actionsCell = document.createElement("td");
+          
+          // Crear botones con manejadores de eventos
+          const btnVer = document.createElement('button');
+          btnVer.className = 'btn btn-sm btn-info btn-action me-1';
+          btnVer.innerHTML = '<i class="fas fa-eye"></i>';
+          btnVer.onclick = function() { verDetalle(item.ID); };
+          
+          const btnEditar = document.createElement('button');
+          btnEditar.className = 'btn btn-sm btn-warning btn-action me-1';
+          btnEditar.innerHTML = '<i class="fas fa-edit"></i>';
+          btnEditar.onclick = function() { editarRegistro(item.ID); };
+          
+          const btnEliminar = document.createElement('button');
+          btnEliminar.className = 'btn btn-sm btn-danger btn-action';
+          btnEliminar.innerHTML = '<i class="fas fa-trash"></i>';
+          btnEliminar.onclick = function() { eliminarRegistro(item.ID); };
+          
+          actionsCell.appendChild(btnVer);
+          actionsCell.appendChild(btnEditar);
+          actionsCell.appendChild(btnEliminar);
+          
+          row.appendChild(actionsCell);
+          
+          tbody.appendChild(row);
+        });
+      }
+
+      // Función para ver detalles
+      window.verDetalle = function(id) {
+        // Mostrar detalles en un modal
+        mostrarDetallesModal(id);
+      };
+
+      // Función para editar registro
+      window.editarRegistro = function(id) {
+        // Mostrar modal con formulario completo
+        mostrarFormularioEdicion(id);
+      };
+
+      // Función para eliminar registro
+      window.eliminarRegistro = function(id) {
+        if (confirm('¿Está seguro que desea eliminar este registro?')) {
+          showLoading();
+          
+          try {
+            google.script.run
+              .withSuccessHandler(function(result) {
+                hideLoading();
+                if (result && result.success) {
+                  // Eliminar también del localStorage
+                  removeFromLocalStorage(id);
+                  alert('Registro eliminado correctamente');
+                  // Recargar para mostrar cambios
+                  mostrarDatosLocalStorage();
+                } else {
+                  alert('Error al eliminar el registro: ' + (result ? result.message : 'Error desconocido'));
+                }
+              })
+              .withFailureHandler(function(error) {
+                hideLoading();
+                console.error("Error al eliminar registro:", error);
+                alert('Error al eliminar el registro: ' + error);
+              })
+              .deleteCaso(id);
+          } catch (error) {
+            hideLoading();
+            console.error("Error al intentar eliminar:", error);
+            alert('Error al eliminar el registro: ' + error);
+          }
+        }
+      };
+
+      // Función para mostrar detalles en modal
+      function mostrarDetallesModal(id) {
+        showLoading();
+        
+        try {
+          // Buscar el registro en localStorage
+          const storedData = localStorage.getItem('fecor_registros');
+          if (!storedData) {
+            hideLoading();
+            alert('No se encontraron datos para mostrar');
+            return;
+          }
+          
+          const datos = JSON.parse(storedData);
+          const registro = datos.find(item => item.ID === id);
+          
+          if (!registro) {
+            hideLoading();
+            alert('No se encontró el registro solicitado');
+            return;
+          }
+          
+          // Verificar si existe el modal, si no, crearlo
+          if (!document.getElementById('detallesModal')) {
+            const modalHTML = `
+              <div class="modal fade" id="detallesModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                  <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                      <h5 class="modal-title">Detalles del Registro</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="detallesModalBody">
+                      <!-- Aquí se cargarán los detalles del registro -->
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                      <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalles">Editar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            // Agregar el modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+          }
+          
+          // Generar HTML con los detalles
+          let detallesHTML = '<div class="container-fluid">';
+          
+          // Sección información básica
+          detallesHTML += `
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">Información Básica</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6 mb-2">
+                    <strong>Fecha de Registro:</strong> ${registro['Fecha de Registro'] || ''}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Fiscalía:</strong> ${registro['Fiscalía'] || ''}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Fiscal a cargo:</strong> ${registro['Fiscal a cargo'] || ''}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Carpeta Fiscal:</strong> ${registro['Carpeta Fiscal'] || ''}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Fecha de Inicio:</strong> ${registro['Fecha de Inicio'] || registro['Fecha de Registro'] || ''}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Estado:</strong> ${registro['Estado'] || 'Activo'}
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <strong>Unidad de Inteligencia:</strong> ${registro['Unidad de Inteligencia'] || ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          // Incluir información adicional
+          detallesHTML += `
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">Información Adicional</h6>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-12 mb-2">
+                    <strong>Observaciones:</strong>
+                    <p>${registro['Observaciones'] || 'Sin observaciones'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          detallesHTML += '</div>'; // Cerrar container-fluid
+          
+          // Mostrar en el modal
+          document.getElementById('detallesModalBody').innerHTML = detallesHTML;
+          
+          hideLoading();
+          
+          // Configurar botón de editar para que abra el formulario de edición
+          document.getElementById('btnEditarDesdeDetalles').onclick = function() {
+            bootstrap.Modal.getInstance(document.getElementById('detallesModal')).hide();
+            setTimeout(function() {
+              editarRegistro(id);
+            }, 500);
+          };
+          
+          // Mostrar modal
+          const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
+          modal.show();
+        } catch (error) {
+          hideLoading();
+          console.error("Error al mostrar detalles en modal:", error);
+          alert("No se pudieron cargar los detalles del registro");
+        }
+      }
+
+      // Función para mostrar formulario de edición en modal
+      function mostrarFormularioEdicion(id) {
+        showLoading();
+        
+        try {
+          // Buscar el registro en localStorage
+          const storedData = localStorage.getItem('fecor_registros');
+          if (!storedData) {
+            hideLoading();
+            alert('No se encontraron datos para editar');
+            return;
+          }
+          
+          const datos = JSON.parse(storedData);
+          const registro = datos.find(item => item.ID === id);
+          
+          if (!registro) {
+            hideLoading();
+            alert('No se encontró el registro solicitado');
+            return;
+          }
+          
+          // Verificar si existe el modal, si no, crearlo
+          if (!document.getElementById('editarModal')) {
+            const modalHTML = `
+              <div class="modal fade" id="editarModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                  <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                      <h5 class="modal-title">Editar Registro</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <form id="editarForm">
+                        <input type="hidden" id="editId" name="id">
+                        
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label for="editFiscalia" class="form-label">Fiscalía</label>
+                            <input type="text" class="form-control" id="editFiscalia" name="Fiscalía">
+                          </div>
+                          <div class="col-md-6">
+                            <label for="editFiscal" class="form-label">Fiscal a cargo</label>
+                            <input type="text" class="form-control" id="editFiscal" name="Fiscal a cargo">
+                          </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label for="editCarpeta" class="form-label">Carpeta Fiscal</label>
+                            <input type="text" class="form-control" id="editCarpeta" name="Carpeta Fiscal">
+                          </div>
+                          <div class="col-md-6">
+                            <label for="editFechaInicio" class="form-label">Fecha de Inicio</label>
+                            <input type="date" class="form-control" id="editFechaInicio" name="Fecha de Inicio">
+                          </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                          <div class="col-md-6">
+                            <label for="editEstado" class="form-label">Estado</label>
+                            <select class="form-select" id="editEstado" name="Estado">
+                              <option value="Activo">Activo</option>
+                              <option value="Finalizado">Finalizado</option>
+                              <option value="Suspendido">Suspendido</option>
+                              <option value="Archivado">Archivado</option>
+                            </select>
+                          </div>
+                          <div class="col-md-6">
+                            <label for="editUnidad" class="form-label">Unidad de Inteligencia</label>
+                            <input type="text" class="form-control" id="editUnidad" name="Unidad de Inteligencia">
+                          </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                          <label for="editObservaciones" class="form-label">Observaciones</label>
+                          <textarea class="form-control" id="editObservaciones" name="Observaciones" rows="3"></textarea>
+                        </div>
+                      </form>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="button" class="btn btn-primary" id="btnGuardarEdicion">Guardar cambios</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            // Agregar el modal al body
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            // Agregar evento al botón de guardar
+            document.getElementById('btnGuardarEdicion').addEventListener('click', guardarCambios);
+          }
+          
+          // Llenar el formulario con los datos del registro
+          document.getElementById('editId').value = registro.ID || '';
+          document.getElementById('editFiscalia').value = registro['Fiscalía'] || '';
+          document.getElementById('editFiscal').value = registro['Fiscal a cargo'] || '';
+          document.getElementById('editCarpeta').value = registro['Carpeta Fiscal'] || '';
+          document.getElementById('editFechaInicio').value = formatDate(registro['Fecha de Inicio'] || registro['Fecha de Registro'] || '');
+          document.getElementById('editEstado').value = registro['Estado'] || 'Activo';
+          document.getElementById('editUnidad').value = registro['Unidad de Inteligencia'] || '';
+          document.getElementById('editObservaciones').value = registro['Observaciones'] || '';
+          
+          hideLoading();
+          
+          // Mostrar el modal
+          const modal = new bootstrap.Modal(document.getElementById('editarModal'));
+          modal.show();
+        } catch (error) {
+          hideLoading();
+          console.error("Error al mostrar formulario de edición:", error);
+          alert("No se pudo cargar el formulario de edición");
+        }
+      }
+
+      // Función para guardar cambios de edición
+      function guardarCambios() {
+        showLoading();
+        
+        // Obtener datos del formulario
+        const id = document.getElementById('editId').value;
+        const formData = {
+          'ID': id,
+          'Fiscalía': document.getElementById('editFiscalia').value,
+          'Fiscal a cargo': document.getElementById('editFiscal').value,
+          'Carpeta Fiscal': document.getElementById('editCarpeta').value,
+          'Fecha de Inicio': document.getElementById('editFechaInicio').value,
+          'Estado': document.getElementById('editEstado').value,
+          'Unidad de Inteligencia': document.getElementById('editUnidad').value,
+          'Observaciones': document.getElementById('editObservaciones').value
+        };
+        
+        // Actualizar en localStorage
+        updateLocalStorage(id, formData);
+        
+        // Intentar actualizar en el servidor
+        try {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              hideLoading();
+              
+              if (result && result.success) {
+                alert('Registro actualizado correctamente');
+              } else {
+                alert('El registro se actualizó localmente, pero hubo un error en el servidor: ' + 
+                      (result ? result.message : 'Error desconocido'));
+              }
+              
+              // Cerrar el modal
+              bootstrap.Modal.getInstance(document.getElementById('editarModal')).hide();
+              
+              // Recargar la vista
+              mostrarDatosLocalStorage();
+            })
+            .withFailureHandler(function(error) {
+              hideLoading();
+              console.error("Error al actualizar en el servidor:", error);
+              alert('El registro se actualizó localmente, pero hubo un error en el servidor: ' + error);
+              
+              // Cerrar el modal
+              bootstrap.Modal.getInstance(document.getElementById('editarModal')).hide();
+              
+              // Recargar la vista
+              mostrarDatosLocalStorage();
+            })
+            .updateCaso(id, formData);
+        } catch (error) {
+          hideLoading();
+          console.error("Error al intentar actualizar:", error);
+          alert('El registro se actualizó localmente, pero no se pudo conectar con el servidor');
+          
+          // Cerrar el modal
+          bootstrap.Modal.getInstance(document.getElementById('editarModal')).hide();
+          
+          // Recargar la vista
+          mostrarDatosLocalStorage();
+        }
+      }
+
+      // Función para actualizar datos en localStorage
+      function updateLocalStorage(id, formData) {
+        try {
+          const storedData = localStorage.getItem('fecor_registros');
+          if (storedData) {
+            const datos = JSON.parse(storedData);
+            const index = datos.findIndex(item => item.ID === id);
+            
+            if (index !== -1) {
+              // Mantener campos que no se están editando
+              const original = datos[index];
+              const updated = {...original, ...formData};
+              
+              datos[index] = updated;
+              localStorage.setItem('fecor_registros', JSON.stringify(datos));
+              return true;
+            }
+          }
+          return false;
+        } catch (e) {
+          console.error("Error al actualizar datos en localStorage:", e);
+          return false;
+        }
+      }
+
+      // Función para eliminar un registro del localStorage
+      function removeFromLocalStorage(id) {
+        try {
+          const storedData = localStorage.getItem('fecor_registros');
+          if (storedData) {
+            const datos = JSON.parse(storedData);
+            const nuevosDatos = datos.filter(function(item) {
+              return item.ID !== id;
+            });
+            localStorage.setItem('fecor_registros', JSON.stringify(nuevosDatos));
+            return true;
+          }
+          return false;
+        } catch (e) {
+          console.error("Error al eliminar registro de localStorage:", e);
+          return false;
+        }
+      }
+
+      // Función para formatear fechas (DD/MM/YYYY -> YYYY-MM-DD)
+      function formatDate(dateString) {
+        if (!dateString) return '';
+        
+        // Si ya tiene formato ISO (YYYY-MM-DD), devolverlo
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
+        }
+        
+        // Intentar convertir desde formato DD/MM/YYYY
+        try {
+          const parts = dateString.split('/');
+          if (parts.length === 3) {
+            // Asegurarse de que el año tenga 4 dígitos
+            let year = parts[2];
+            if (year.length === 2) {
+              year = '20' + year;
+            }
+            
+            // Formato requerido por input type="date": YYYY-MM-DD
+            return `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          }
+        } catch (e) {
+          console.error("Error al formatear fecha:", e);
+        }
+        
+        return '';
+      }
+
+      // Funciones para exportación
+      function exportarExcel() {
+        showLoading();
+        
+        // Crear un archivo Excel básico desde los datos en localStorage
+        try {
+          // Obtener datos
+          const storedData = localStorage.getItem('fecor_registros');
+          if (!storedData) {
+            hideLoading();
+            alert('No hay datos para exportar');
+            return;
+          }
+          
+          const datos = JSON.parse(storedData);
+          if (!Array.isArray(datos) || datos.length === 0) {
+            hideLoading();
+            alert('No hay datos para exportar');
+            return;
+          }
+          
+          // Crear CSV
+          let csv = 'Fecha de Registro,Fiscalía,Fiscal a cargo,Carpeta Fiscal,Fecha de Inicio,Estado,Unidad de Inteligencia\n';
+          
+          datos.forEach(function(item) {
+            // Obtener valores o valores por defecto
+            const fechaRegistro = item['Fecha de Registro'] || '';
+            const fiscalia = item['Fiscalía'] || '';
+            const fiscalACargo = item['Fiscal a cargo'] || '';
+            const carpetaFiscal = item['Carpeta Fiscal'] || '';
+            const fechaInicio = item['Fecha de Inicio'] || item['Fecha de Registro'] || '';
+            const estado = item['Estado'] || 'Activo';
+            const unidad = item['Unidad de Inteligencia'] || '';
+            
+            // Escapar comas y comillas
+            const escape = function(str) {
+              if (typeof str === 'string' && (str.includes(',') || str.includes('"'))) {
+                return '"' + str.replace(/"/g, '""') + '"';
+              }
+              return str;
+            };
+            
+            // Añadir fila
+            csv += [
+              escape(fechaRegistro),
+              escape(fiscalia),
+              escape(fiscalACargo),
+              escape(carpetaFiscal),
+              escape(fechaInicio),
+              escape(estado),
+              escape(unidad)
+            ].join(',') + '\n';
+          });
+          
+          // Crear y descargar archivo
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'registro_bandas_criminales.csv';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          
+          hideLoading();
+        } catch (error) {
+          hideLoading();
+          console.error("Error al exportar a Excel:", error);
+          alert('Error al exportar a Excel: ' + error);
+        }
+      }
+
+      function exportarPDF() {
+        showLoading();
+        
+        alert('La exportación a PDF no está implementada en el servidor. Esta funcionalidad requiere implementación adicional.');
+        
+        hideLoading();
+      }
+
+      // Función para mostrar el indicador de carga
+      function showLoading() {
+        const loadingElement = document.getElementById('loadingIndicator');
+        if (loadingElement) {
+          loadingElement.style.display = 'block';
+        } else {
+          // Crear un elemento de carga si no existe
+          const loading = document.createElement('div');
+          loading.id = 'loadingIndicator';
+          loading.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;';
+          loading.innerHTML = '<div style="background: white; padding: 20px; border-radius: 5px;">Cargando...</div>';
+          document.body.appendChild(loading);
+        }
+      }
+
+      // Función para ocultar el indicador de carga
+
+      function hideLoading() {
+        const loadingElement = document.getElementById('loadingIndicator');
+        if (loadingElement) {
+          loadingElement.style.display = 'none';
+        }
+        
+        // También ocultar cualquier otro elemento de carga
+        const loadingElements = document.querySelectorAll('.loading, .loading-indicator, [role="status"]');
+        loadingElements.forEach(function(el) {
+          el.style.display = 'none';
+        });
+      }
+    </script>
+  </body>
+</html>
